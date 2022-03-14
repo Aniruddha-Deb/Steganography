@@ -1,6 +1,28 @@
+#!/usr/bin/env python
 # works only on 24-bit PNG images at the moment, need to make more robust
 
 from PIL import Image
+import os, sys
+
+helptext = """
+steganography.py
+encrypting/decrypting text with a password into an image
+
+Usage:
+./steganography.py encode <imagefile> <password>
+./steganography.py decode <imagefile> <password>
+
+both options take input from/output to stdin/stdout respectively, so if you want
+to encrypt text stored in a file to an image, use redirection:
+
+./steganography.py encode <imagefile> <password> < <textfile>
+
+Similarly for decoding:
+
+./steganography.py decode <imagefile> <password> < <textfile>
+
+Authors: Aniruddha Deb, Riya Sawhney, Tanish Gupta
+"""
 
 def encode(source, str_to_encode, target):
 	img = Image.open(source)
@@ -28,6 +50,12 @@ def decode(source, len_to_decode):
 		strbytes.extend([t])
 	
 	return strbytes.decode()
+
+def main():
+    print(helptext)
+
+if __name__ == "__main__":
+    main()
 
 # encode("tgwok.png", "hello this is a test", "encr.png")
 # print(decode("encr.png",20))
