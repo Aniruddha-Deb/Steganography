@@ -3,6 +3,7 @@
 
 from PIL import Image
 import os, sys
+import numpy as np
 from Crypto.Cipher import AES
 from hashlib import sha256
 
@@ -36,26 +37,39 @@ def encrypt(text_to_excrypt, password):  #the text to encrypt is a string(utf-8)
     nonce = cipher.nonce
     return (ciphertext, tag, nonce)
 
-def decrypt(ciphertext, tag, nonce, password):
+def decrypt(ciphertext, nonce, password):
     key = (sha256(password.encode()).digest())
     key = key[0:32]
     cipher = AES.new(key, AES.MODE_EAX, nonce = nonce)
     decrypted_text = cipher.decrypt(ciphertext)
     decrypted_text = decrypted_text.decode('utf-8')
-    try:
-        cipher.verify(tag)
-        return decrypted_text
-    except ValueError:
-        return None
+    return decrypted_text
+    # try:
+    #     cipher.verify(tag)
+    #     return decrypted_text
+    # except ValueError:
+    #     return None
 
 def write_lsb(data, color, lsb, pos, w):
-    t = data[pos//w,pos%w]
+    t = data[(pos%w),(pos//w)]
     a = [n for n in t]
-    a[color] = (a[color]|lsb)
-    data[pos//w,pos%w] = tuple(a)
+    a[color] = ((a[color]&0xFE)|lsb)
+    data[pos%w,pos//w] = tuple(a)
+
+def read_lsb(data, color, pos, w):
+    t = data[pos%w,pos//w]
+    a = [n for n in t]
+    return (a[color]&0x01)
+
+def get_enc_positions(password, totpixels, length):
+    sha1 = sha256(f"{password}".encode()).digest()
+    permutation = np.random.RandomState(seed=int.from_bytes(sha1[0:3], byteorder='big')).permutation(totpixels-(256+16))
+    positions = []
+    for i in range(length):
+        positions.append((int(permutation[i]),permutation[i]%3))
+    return positions
 
 def encode(input_img, password, text, output_img):
-    print(f"encoding image, {password}, {text}")
 
     # hash and encode text - tanish
     # encoding function - riya
@@ -66,19 +80,22 @@ def encode(input_img, password, text, output_img):
     # function
     #
     (ciphertext, tag, nonce) = encrypt(text, password)
-    # enc_positions = [(a_1,c_1), (a_2,c_2), ... , (a_n, c_n)]
 
-    print(input_img.format)
-    if (input_img.format != "PNG"):
-        raise ValueError("Input file is not a PNG image")
-    if (input_img.size < (256, 256)):
-        raise ValueError("Input Image is too small to encrypt")
+    if (input_img.format != "PNG") and (input_img.format != "BMP"):
+        raise ValueError("Input file is not a PNG or BMP image")
+    if (input_img.mode != "RGB") and (input_img.mode != "RGBA"):
+        raise ValueError("Input Color Mode is not compatiable")
+    if (input_img.size < (128,128)):
+        raise ValueError("Input Image is too small to encrypt (need > 128x128)")
 
     data = input_img.load()
     # encode text length in round robin manner (RGBRGB...) in first 16 pixels
     len_enc = len(ciphertext)
     for i in range(16):
-        write_lsb(data,i%3,((1<<i)&len_enc)>>i,i,input_img.size[0])
+        write_lsb(data,0,((1<<i)&len_enc)>>i,i,input_img.size[0])
+    for i in range(16):
+        for j in range(8):
+            write_lsb(data,0,((1<<j)&nonce[i])>>j,(i+2)*8+j,input_img.size[0])
 
     bitarray = []
 
@@ -86,27 +103,59 @@ def encode(input_img, password, text, output_img):
         for j in range(8):
             bitarray.append(((1<<j) & ciphertext[i])>>j)
 
+    enc_positions = get_enc_positions(password, input_img.size[0]*input_img.size[1], len(bitarray))
+
+    for i in range(len(bitarray)):
+        (pos,color) = enc_positions[i]
+        write_lsb(data, color, bitarray[i], pos, input_img.size[0])
+
     # print bitarray for now
-    print(bitarray)
+    # print(bitarray)
+    input_img.save(output_img)
 
     # write bitarray to image
     #for i in range(len(bitarray)):
-        
-        
 
-def decode(source, len_to_decode):
-	simg = Image.open(source)
-	data = simg.load()
-	strbytes = bytearray()
+def decode(input_img, password):
 
-	for i in range(len_to_decode):
-		t = 0
-		for j in range(8):
-			r,g,b = data[i,j]
-			t = t | ((b&0x01)<<j)
-		strbytes.extend([t])
-	
-	return strbytes.decode()
+    if (input_img.format != "PNG") and (input_img.format != "BMP"):
+        raise ValueError("Input file is not a PNG or BMP image")
+    if (input_img.mode != "RGB") and (input_img.mode != "RGBA"):
+        raise ValueError("Input Color Mode is not compatiable")
+    if (input_img.size < (128, 128)):
+        raise ValueError("Input Image is too small to encrypt")
+
+    data = input_img.load()
+    strbytes = bytearray()
+
+    # get length of string to decode
+    len_to_decode = 0
+    for i in range(16):
+        lsb = read_lsb(data, 0, i, input_img.size[0])
+        len_to_decode = len_to_decode | (lsb<<i)
+
+    # get nonce encoded in image
+    nonce = bytearray()
+    for i in range(16):
+        t = 0
+        for j in range(8):
+            pos = (i+2)*8+j
+            b = read_lsb(data,0,pos,input_img.size[0])
+            t = t | (b<<j)
+        nonce.extend([t])
+
+    # get encryption map from password
+    enc_positions = get_enc_positions(password, input_img.size[0]*input_img.size[1], len_to_decode*8)
+
+    for i in range(len_to_decode):
+        t = 0
+        for j in range(8):
+            (pos, color) = enc_positions[i*8+j]
+            b = read_lsb(data,color,pos,input_img.size[0])
+            t = t | (b<<j)
+        strbytes.extend([t])
+
+    return decrypt(strbytes, nonce, password)
 
 def arg_error():
     print("Argument Error: incomplete or incorrect arguments. Exiting.")
@@ -136,7 +185,13 @@ def main():
             print(e)
 
     elif (sys.argv[1] == "decode"):
-        print("decoding")
+        try:
+            img = Image.open(sys.argv[2])
+            text = decode(img, sys.argv[3])
+            print(text)
+        except Exception as e:
+            print("An error occured while decoding:")
+            print(e)
     else:
         arg_error()
 
