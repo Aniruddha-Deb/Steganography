@@ -66,7 +66,7 @@ def get_enc_positions(password, totpixels, length):
     permutation = np.random.RandomState(seed=int.from_bytes(sha1[0:3], byteorder='big')).permutation(totpixels-(256+16))
     positions = []
     for i in range(length):
-        positions.append((int(permutation[i]),permutation[i]%3))
+        positions.append((int(permutation[i])+(256+16),permutation[i]%3))
     return positions
 
 def encode(input_img, password, text, output_img):
@@ -133,6 +133,8 @@ def decode(input_img, password):
     for i in range(16):
         lsb = read_lsb(data, 0, i, input_img.size[0])
         len_to_decode = len_to_decode | (lsb<<i)
+
+    print(len_to_decode)
 
     # get nonce encoded in image
     nonce = bytearray()
