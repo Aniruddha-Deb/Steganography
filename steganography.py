@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# works only on 24-bit PNG images at the moment, need to make more robust
 
 from PIL import Image
 import os, sys

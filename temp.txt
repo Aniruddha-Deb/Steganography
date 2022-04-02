@@ -1,0 +1,30 @@
+so if we do a FFT now, we'll need to:
+- split the matrix into three (or four) matrices and do an fft individually
+- encode into each of the matrices
+- take an inverse fft
+for decoding:
+- take the fft of the split matrices, 
+- decode from the sequence (picking values from each of the four)
+- decrypt with password etc etc
+
+will need quite a bit of code + changing the block diagrams in the presentation rn
+
+IF they ask us how this si related to signals and systems, maybe we can say this?
+
+basically our systems are non-LTI (whatever systems there are in our block diagram). uspe stress kar denge 
+they're still systems (take input give output)
+
+@Tanish
+Nonce explanation
+
+Uska timer is actually for 10 min :/
+the person in front of us
+sir said 10 min max initially today
+i think we'll have to come again at some other time
+
+why do I think I've seen these programs before?
+Quantum global summer school..
+
+kuch nahi bola :'(
+"I'm taking a course in this later in the summer - quantum computing and machine learning, and I'm using the same code so I realized"
+Bruh. We wrote our code by hand! 
