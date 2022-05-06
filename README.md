@@ -17,35 +17,28 @@ The method that we've used is as follows:
 ### Encryption
 
 1. Encryption of message: Using the secret message and password(which is known only to the sender and receiver of the message), the encrypted text is obtained. 
-Encrpted_text= F(password, secret_message)
+Encrypted_text= F(password, secret_message)
 The function used here is based on AES-256. 
 AES is based on substitution-permutation network. It uses a fixed block size of 128 bits and a key size of 256 bits. 
 
-2. Now, the encrypted text is hidden into the image using an encoding function. 
-# EXPLAIN ENCODING FUNCTION
+2. Now, the encrypted text is hidden into the image using an encoding function. We use a random permutation generator, seeded with the hash of the password. The random permutation is then used to encode the bits into the image.
 
 At this stage, the modified image with the encrypted text can be sent. 
 As can be observed, the difference between the original and modified image is so subtle that it can't be observed by the human eye. 
 
+![original](teaparty.png)
+
+![encrypted](teaparty_enc.png)
 
 ### Decryption
 
 Given the modified image containing the message and the password, the secret message is extracted from the image!
 
-Message= F(image, password)
+Message = F(image, password)
 
 ## Practical Application
 LSB steganography has several applications such as Online transactions and military communication. 
 
 ## Acknowledgements
 
-
-## TODO
-
-- [X] Basic PoI 
-- [ ] Modularize and think of overall library architecture (classes, files etc)
-- [ ] Encrypting data before embedding (aes-256)
-- [ ] Solidify for 24 bit and 32 bit PNG's
-- [ ] Check whether change in image colour is noticeable
-- [ ] Implement for uncompressed BMP 
-- [ ] ? GUI
+Tanish Gupta, Riya Sawhney, Aniruddha Deb
